@@ -1,43 +1,47 @@
+import { useEffect, useState } from "react";
 
-import { useState } from 'react';
-
-export interface Todo {
-  id: string;
-  title: string;
-  completed: boolean;
-}
+const API_URL = import.meta.env.VITE_API_URL + "/todos";
 
 export function useTodos() {
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todos, setTodos] = useState<any[]>([]);
 
-  const addTodo = (title: string) => {
-    if (title.trim() === '') return;
-    
-    const newTodo: Todo = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      completed: false
-    };
-    
-    setTodos((prevTodos) => [...prevTodos, newTodo]);
+  const fetchTodos = async () => {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    setTodos(data);
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
+  const addTodo = async (title: string) => {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const newTodo = await res.json();
+    setTodos([...todos, newTodo]);
+  };
+
+  const toggleTodo = async (id: number) => {
+    const target = todos.find((t) => t.id === id);
+    const res = await fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: !target.completed }),
+    });
+    const updated = await res.json();
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? updated : t))
     );
   };
 
-  const deleteTodo = (id: string) => {
-    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+  const deleteTodo = async (id: number) => {
+    await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+    setTodos((prev) => prev.filter((t) => t.id !== id));
   };
 
-  return {
-    todos,
-    addTodo,
-    toggleTodo,
-    deleteTodo
-  };
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  return { todos, addTodo, toggleTodo, deleteTodo };
 }
